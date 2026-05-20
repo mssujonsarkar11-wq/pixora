@@ -1,53 +1,95 @@
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PIXORA Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
 
-    // আপনার কনফিগারেশন
-    const firebaseConfig = {
-        apiKey: "AIzaSyAumbU-7Eaaw0ivNrbBEB8PutkWvQSGBMQ",
-        authDomain: "pixora-21c62.firebaseapp.com",
-        projectId: "pixora-21c62",
-        storageBucket: "pixora-21c62.firebasestorage.app",
-        messagingSenderId: "997778712038",
-        appId: "1:997778712038:web:25791b604601b456e6a227"
-    };
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">PIXORA Admin Panel</h1>
 
-    const db = getFirestore(initializeApp(firebaseConfig));
+        <div class="bg-white p-6 rounded shadow mb-8">
+            <h2 class="text-xl font-bold mb-4">Manage Products</h2>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <input id="p-name" placeholder="Name" class="border p-2 rounded">
+                <input id="p-price" type="number" placeholder="Price" class="border p-2 rounded">
+                <button id="add-btn" class="col-span-2 bg-orange-600 text-white py-2 rounded font-bold">Add Product</button>
+            </div>
+            <div id="products-list" class="grid grid-cols-3 gap-4"></div>
+        </div>
 
-    // ১. প্রোডাক্ট অ্যাড করার বাটন লিসেনার (onclick-এর বিকল্প)
-    document.getElementById("add-btn").addEventListener("click", async () => {
-        const name = document.getElementById("p-name").value;
-        const price = document.getElementById("p-price").value;
+        <div class="bg-white p-6 rounded shadow">
+            <h2 class="text-xl font-bold mb-4">Orders Management</h2>
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b">
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-list"></tbody>
+            </table>
+        </div>
+    </div>
 
-        if (name && price) {
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const db = getFirestore(initializeApp({
+            apiKey: "AIzaSyAumbU-7Eaaw0ivNrbBEB8PutkWvQSGBMQ",
+            authDomain: "pixora-21c62.firebaseapp.com",
+            projectId: "pixora-21c62",
+            storageBucket: "pixora-21c62.firebasestorage.app",
+            messagingSenderId: "997778712038",
+            appId: "1:997778712038:web:25791b604601b456e6a227"
+        }));
+
+        // ১. প্রোডাক্ট ম্যানেজমেন্ট
+        document.getElementById("add-btn").onclick = async () => {
+            const name = document.getElementById("p-name").value;
+            const price = document.getElementById("p-price").value;
             await addDoc(collection(db, "products"), { name, price: Number(price) });
-            alert("প্রোডাক্ট যোগ হয়েছে!");
-            document.getElementById("p-name").value = "";
-            document.getElementById("p-price").value = "";
-        } else {
-            alert("নাম এবং দাম লিখুন!");
-        }
-    });
+            alert("Added!");
+        };
 
-    // ২. রিয়েল-টাইম ডাটা ডিসপ্লে
-    onSnapshot(collection(db, "products"), (snap) => {
-        const list = document.getElementById("products-list");
-        list.innerHTML = "";
-        snap.forEach((d) => {
-            const p = d.data();
-            list.innerHTML += `
-                <div class="product-card">
-                    <h3>${p.name}</h3>
-                    <p>৳${p.price}</p>
-                    <button class="delete-btn" data-id="${d.id}">Delete</button>
-                </div>`;
+        onSnapshot(collection(db, "products"), (snap) => {
+            const list = document.getElementById("products-list");
+            list.innerHTML = "";
+            snap.forEach(d => {
+                const p = d.data();
+                list.innerHTML += `<div class="border p-2"><h3>${p.name}</h3><p>৳${p.price}</p>
+                <button onclick="window.delP('${d.id}')" class="text-red-500">Delete</button></div>`;
+            });
         });
-        
-        // ডিলিট ইভেন্ট হ্যান্ডলিং
-        document.querySelectorAll(".delete-btn").forEach(btn => {
-            btn.onclick = async (e) => {
-                await deleteDoc(doc(db, "products", e.target.getAttribute("data-id")));
-            };
+
+        // ২. অর্ডার ম্যানেজমেন্ট
+        onSnapshot(collection(db, "orders"), (snap) => {
+            const list = document.getElementById("orders-list");
+            list.innerHTML = "";
+            snap.forEach(d => {
+                const o = d.data();
+                list.innerHTML += `<tr class="border-b">
+                    <td>${o.name || 'N/A'}</td>
+                    <td>${o.items || '---'}</td>
+                    <td>৳${o.total}</td>
+                    <td>
+                        <select onchange="window.updateStatus('${d.id}', this.value)">
+                            <option ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                        </select>
+                    </td>
+                </tr>`;
+            });
         });
-    });
-</script>
+
+        // গ্লোবাল ফাংশন
+        window.delP = async (id) => await deleteDoc(doc(db, "products", id));
+        window.updateStatus = async (id, status) => await updateDoc(doc(db, "orders", id), { status });
+    </script>
+</body>
+</html>
