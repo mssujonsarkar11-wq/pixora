@@ -1,84 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>PIXORA Admin Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 p-8">
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    <div class="max-w-4xl mx-auto">
-        <h2 class="text-2xl font-bold mb-6">Manage Products</h2>
+    // আপনার কনফিগারেশন
+    const firebaseConfig = {
+        apiKey: "AIzaSyAumbU-7Eaaw0ivNrbBEB8PutkWvQSGBMQ",
+        authDomain: "pixora-21c62.firebaseapp.com",
+        projectId: "pixora-21c62",
+        storageBucket: "pixora-21c62.firebasestorage.app",
+        messagingSenderId: "997778712038",
+        appId: "1:997778712038:web:25791b604601b456e6a227"
+    };
+
+    const db = getFirestore(initializeApp(firebaseConfig));
+
+    // ১. প্রোডাক্ট অ্যাড করার বাটন লিসেনার (onclick-এর বিকল্প)
+    document.getElementById("add-btn").addEventListener("click", async () => {
+        const name = document.getElementById("p-name").value;
+        const price = document.getElementById("p-price").value;
+
+        if (name && price) {
+            await addDoc(collection(db, "products"), { name, price: Number(price) });
+            alert("প্রোডাক্ট যোগ হয়েছে!");
+            document.getElementById("p-name").value = "";
+            document.getElementById("p-price").value = "";
+        } else {
+            alert("নাম এবং দাম লিখুন!");
+        }
+    });
+
+    // ২. রিয়েল-টাইম ডাটা ডিসপ্লে
+    onSnapshot(collection(db, "products"), (snap) => {
+        const list = document.getElementById("products-list");
+        list.innerHTML = "";
+        snap.forEach((d) => {
+            const p = d.data();
+            list.innerHTML += `
+                <div class="product-card">
+                    <h3>${p.name}</h3>
+                    <p>৳${p.price}</p>
+                    <button class="delete-btn" data-id="${d.id}">Delete</button>
+                </div>`;
+        });
         
-        <div class="bg-white p-6 rounded shadow mb-8 grid grid-cols-2 gap-4">
-            <input id="p-name" placeholder="Product Name" class="border p-2 w-full rounded outline-none">
-            <input id="p-price" type="number" placeholder="Price" class="border p-2 w-full rounded outline-none">
-            <button id="add-btn" class="col-span-2 bg-orange-600 text-white py-2 rounded font-bold hover:bg-orange-700">Add Product</button>
-        </div>
-
-        <div id="products-list" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyAumbU-7Eaaw0ivNrbBEB8PutkWvQSGBMQ",
-            authDomain: "pixora-21c62.firebaseapp.com",
-            projectId: "pixora-21c62",
-            storageBucket: "pixora-21c62.firebasestorage.app",
-            messagingSenderId: "997778712038",
-            appId: "1:997778712038:web:25791b604601b456e6a227"
-        };
-
-        const db = getFirestore(initializeApp(firebaseConfig));
-
-        // ১. প্রোডাক্ট অ্যাড করার লজিক
-        document.getElementById("add-btn").addEventListener("click", async () => {
-            const nameInput = document.getElementById("p-name");
-            const priceInput = document.getElementById("p-price");
-            
-            if (!nameInput.value || !priceInput.value) return alert("সব ঘর পূরণ করুন!");
-
-            try {
-                await addDoc(collection(db, "products"), { 
-                    name: nameInput.value, 
-                    price: Number(priceInput.value) 
-                });
-                nameInput.value = "";
-                priceInput.value = "";
-            } catch (e) {
-                console.error("Error:", e);
-                alert("ডাটা অ্যাড হয়নি, কনসোল দেখুন।");
-            }
+        // ডিলিট ইভেন্ট হ্যান্ডলিং
+        document.querySelectorAll(".delete-btn").forEach(btn => {
+            btn.onclick = async (e) => {
+                await deleteDoc(doc(db, "products", e.target.getAttribute("data-id")));
+            };
         });
-
-        // ২. রিয়েল-টাইম ডাটা শো করা এবং ডিলিট করার লজিক
-        onSnapshot(collection(db, "products"), (snap) => {
-            const list = document.getElementById("products-list");
-            list.innerHTML = "";
-            
-            snap.forEach((d) => {
-                const p = d.data();
-                const div = document.createElement("div");
-                div.className = "bg-white p-4 rounded shadow border border-gray-200";
-                div.innerHTML = `
-                    <h3 class="font-bold text-lg">${p.name}</h3>
-                    <p class="text-orange-600 font-semibold mb-3">৳${p.price}</p>
-                    <button class="del-btn bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200" data-id="${d.id}">Delete</button>
-                `;
-                list.appendChild(div);
-            });
-
-            // ডিলিট বাটন ইভেন্ট
-            document.querySelectorAll(".del-btn").forEach(btn => {
-                btn.addEventListener("click", async (e) => {
-                    const id = e.target.getAttribute("data-id");
-                    await deleteDoc(doc(db, "products", id));
-                });
-            });
-        });
-    </script>
-</body>
-</html>
+    });
+</script>
