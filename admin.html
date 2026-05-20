@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PIXORA Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <h2 class="text-2xl font-bold mb-6">Manage Products</h2>
+        
+        <div class="bg-white p-6 rounded shadow mb-8 flex gap-4">
+            <input id="p-name" placeholder="Product Name" class="border p-2 w-full">
+            <input id="p-price" type="number" placeholder="Price" class="border p-2 w-full">
+            <button onclick="saveProduct()" class="bg-blue-600 text-white px-6 py-2 rounded">Add</button>
+        </div>
+
+        <div id="products-list" class="grid grid-cols-3 gap-4"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAumbU-7Eaaw0ivNrbBEB8PutkWvQSGBMQ",
+            authDomain: "pixora-21c62.firebaseapp.com",
+            projectId: "pixora-21c62",
+            storageBucket: "pixora-21c62.firebasestorage.app",
+            messagingSenderId: "997778712038",
+            appId: "1:997778712038:web:25791b604601b456e6a227"
+        };
+
+        const db = getFirestore(initializeApp(firebaseConfig));
+
+        // ১. প্রোডাক্ট সেভ ফাংশন
+        window.saveProduct = async () => {
+            const name = document.getElementById('p-name').value;
+            const price = document.getElementById('p-price').value;
+            if(!name) return alert("Enter Name!");
+            await addDoc(collection(db, "products"), { name, price: Number(price) });
+            document.getElementById('p-name').value = '';
+            document.getElementById('p-price').value = '';
+        };
+
+        // ২. ডিলিট ফাংশন
+        window.deleteProduct = async (id) => {
+            await deleteDoc(doc(db, "products", id));
+        };
+
+        // ৩. রিয়েল-টাইম লিসেনার (ডাটা শো করার জন্য)
+        onSnapshot(collection(db, "products"), (snap) => {
+            const list = document.getElementById("products-list");
+            list.innerHTML = "";
+            snap.forEach((d) => {
+                const p = d.data();
+                list.innerHTML += `
+                <div class="bg-white p-4 rounded shadow border">
+                    <h3 class="font-bold">${p.name}</h3>
+                    <p class="text-blue-600 mb-2">৳${p.price}</p>
+                    <button onclick="deleteProduct('${d.id}')" class="text-red-500 text-sm">Delete</button>
+                </div>`;
+            });
+        });
+    </script>
+</body>
+</html>
