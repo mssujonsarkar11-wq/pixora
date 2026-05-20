@@ -10,13 +10,13 @@
     <div class="max-w-4xl mx-auto">
         <h2 class="text-2xl font-bold mb-6">Manage Products</h2>
         
-        <div class="bg-white p-6 rounded shadow mb-8 flex gap-4">
-            <input id="p-name" placeholder="Product Name" class="border p-2 w-full">
-            <input id="p-price" type="number" placeholder="Price" class="border p-2 w-full">
-            <button onclick="saveProduct()" class="bg-blue-600 text-white px-6 py-2 rounded">Add</button>
+        <div class="bg-white p-6 rounded shadow mb-8 grid grid-cols-2 gap-4">
+            <input id="p-name" placeholder="Product Name" class="border p-2 w-full rounded">
+            <input id="p-price" type="number" placeholder="Price" class="border p-2 w-full rounded">
+            <button id="add-product-btn" class="col-span-2 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Add Product</button>
         </div>
 
-        <div id="products-list" class="grid grid-cols-3 gap-4"></div>
+        <div id="products-list" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
     </div>
 
     <script type="module">
@@ -34,33 +34,39 @@
 
         const db = getFirestore(initializeApp(firebaseConfig));
 
-        // ১. প্রোডাক্ট সেভ ফাংশন
-        window.saveProduct = async () => {
-            const name = document.getElementById('p-name').value;
-            const price = document.getElementById('p-price').value;
-            if(!name) return alert("Enter Name!");
-            await addDoc(collection(db, "products"), { name, price: Number(price) });
-            document.getElementById('p-name').value = '';
-            document.getElementById('p-price').value = '';
-        };
+        // অ্যাড প্রোডাক্ট ইভেন্ট
+        document.getElementById("add-product-btn").addEventListener("click", async () => {
+            const name = document.getElementById("p-name").value;
+            const price = document.getElementById("p-price").value;
+            
+            if(name && price) {
+                try {
+                    await addDoc(collection(db, "products"), { name, price: Number(price) });
+                    document.getElementById("p-name").value = "";
+                    document.getElementById("p-price").value = "";
+                    alert("Product added successfully!");
+                } catch (e) {
+                    console.error("Error adding document: ", e);
+                }
+            } else {
+                alert("Please fill in both fields.");
+            }
+        });
 
-        // ২. ডিলিট ফাংশন
-        window.deleteProduct = async (id) => {
-            await deleteDoc(doc(db, "products", id));
-        };
-
-        // ৩. রিয়েল-টাইম লিসেনার (ডাটা শো করার জন্য)
-        onSnapshot(collection(db, "products"), (snap) => {
+        // রিয়েল-টাইম লিস্ট লোড
+        onSnapshot(collection(db, "products"), (snapshot) => {
             const list = document.getElementById("products-list");
             list.innerHTML = "";
-            snap.forEach((d) => {
-                const p = d.data();
-                list.innerHTML += `
-                <div class="bg-white p-4 rounded shadow border">
+            snapshot.forEach((docSnap) => {
+                const p = docSnap.data();
+                const div = document.createElement("div");
+                div.className = "bg-white p-4 rounded shadow border";
+                div.innerHTML = `
                     <h3 class="font-bold">${p.name}</h3>
                     <p class="text-blue-600 mb-2">৳${p.price}</p>
-                    <button onclick="deleteProduct('${d.id}')" class="text-red-500 text-sm">Delete</button>
-                </div>`;
+                    <button onclick="deleteDoc(doc(db, 'products', '${docSnap.id}'))" class="text-red-500 text-sm hover:underline">Delete</button>
+                `;
+                list.appendChild(div);
             });
         });
     </script>
