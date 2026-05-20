@@ -2,94 +2,101 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PIXORA Admin Dashboard</title>
+    <title>PIXORA | Ultimate Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-8">
+<body class="bg-slate-50 p-6">
 
-    <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold mb-8">PIXORA Admin Panel</h1>
+    <div class="grid grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-xs text-slate-500">Revenue</p><h2 id="total-revenue" class="text-xl font-bold">৳0</h2></div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-xs text-orange-500">Pending</p><h2 id="pending-count" class="text-xl font-bold">0</h2></div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border"><p class="text-xs text-green-500">Delivered</p><h2 id="delivered-count" class="text-xl font-bold">0</h2></div>
+        <button onclick="document.getElementById('settings-modal').classList.remove('hidden')" class="bg-white rounded-xl shadow-sm border flex items-center justify-center">⚙️ Settings</button>
+    </div>
 
-        <div class="bg-white p-6 rounded shadow mb-8">
-            <h2 class="text-xl font-bold mb-4">Manage Products</h2>
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <input id="p-name" placeholder="Name" class="border p-2 rounded">
-                <input id="p-price" type="number" placeholder="Price" class="border p-2 rounded">
-                <button id="add-btn" class="col-span-2 bg-orange-600 text-white py-2 rounded font-bold">Add Product</button>
-            </div>
-            <div id="products-list" class="grid grid-cols-3 gap-4"></div>
-        </div>
+    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 uppercase text-xs text-slate-500">
+                <tr>
+                    <th class="p-4">Time & ID</th>
+                    <th class="p-4">Customer Details</th>
+                    <th class="p-4">Address</th>
+                    <th class="p-4">Status</th>
+                    <th class="p-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="order-tbody" class="divide-y"></tbody>
+        </table>
+    </div>
 
-        <div class="bg-white p-6 rounded shadow">
-            <h2 class="text-xl font-bold mb-4">Orders Management</h2>
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="border-b">
-                        <th>Customer</th>
-                        <th>Items</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="orders-list"></tbody>
-            </table>
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-2xl w-96">
+            <h3 class="font-bold mb-4">Steadfast API</h3>
+            <input id="api-key" type="password" placeholder="API Key" class="w-full border p-2 mb-2 rounded">
+            <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="w-full bg-indigo-600 text-white py-2 rounded">Save</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const db = getFirestore(initializeApp({
             apiKey: "AIzaSyAumbU-7Eaaw0ivNrbBEB8PutkWvQSGBMQ",
-            authDomain: "pixora-21c62.firebaseapp.com",
-            projectId: "pixora-21c62",
-            storageBucket: "pixora-21c62.firebasestorage.app",
-            messagingSenderId: "997778712038",
-            appId: "1:997778712038:web:25791b604601b456e6a227"
+            projectId: "pixora-21c62"
         }));
 
-        // ১. প্রোডাক্ট ম্যানেজমেন্ট
-        document.getElementById("add-btn").onclick = async () => {
-            const name = document.getElementById("p-name").value;
-            const price = document.getElementById("p-price").value;
-            await addDoc(collection(db, "products"), { name, price: Number(price) });
-            alert("Added!");
-        };
+        // Notification Permission
+        if (Notification.permission !== "granted") Notification.requestPermission();
 
-        onSnapshot(collection(db, "products"), (snap) => {
-            const list = document.getElementById("products-list");
-            list.innerHTML = "";
-            snap.forEach(d => {
-                const p = d.data();
-                list.innerHTML += `<div class="border p-2"><h3>${p.name}</h3><p>৳${p.price}</p>
-                <button onclick="window.delP('${d.id}')" class="text-red-500">Delete</button></div>`;
-            });
-        });
-
-        // ২. অর্ডার ম্যানেজমেন্ট
         onSnapshot(collection(db, "orders"), (snap) => {
-            const list = document.getElementById("orders-list");
-            list.innerHTML = "";
-            snap.forEach(d => {
+            const tbody = document.getElementById("order-tbody");
+            tbody.innerHTML = "";
+            let rev = 0, pending = 0, delivered = 0;
+
+            snap.forEach((d) => {
                 const o = d.data();
-                list.innerHTML += `<tr class="border-b">
-                    <td>${o.name || 'N/A'}</td>
-                    <td>${o.items || '---'}</td>
-                    <td>৳${o.total}</td>
-                    <td>
-                        <select onchange="window.updateStatus('${d.id}', this.value)">
-                            <option ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                            <option ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
-                        </select>
-                    </td>
-                </tr>`;
+                rev += Number(o.total || 0);
+                if(o.status === 'Pending') {
+                    pending++;
+                    // Notification Logic
+                    if(document.visibilityState === 'hidden') {
+                        new Notification("New Order Received!", { body: `New order from ${o.name} for ৳${o.total}` });
+                    }
+                }
+                if(o.status === 'Delivered') delivered++;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-4 text-xs font-mono text-slate-500">#${d.id.slice(0,6)}<br>${o.time || 'Just now'}</td>
+                        <td class="p-4">
+                            <span class="font-bold">${o.name}</span><br>
+                            <a href="tel:${o.phone}" class="text-indigo-600 underline text-xs">📞 ${o.phone}</a>
+                        </td>
+                        <td class="p-4 text-xs text-slate-600">${o.address || "N/A"}</td>
+                        <td class="p-4">
+                            <select onchange="window.up('${d.id}', this.value)" class="border p-1 rounded text-xs bg-white">
+                                <option ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                                <option ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                <option ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </td>
+                        <td class="p-4 flex gap-2">
+                            <button onclick="window.up('${d.id}', 'Delivered')" class="bg-green-500 text-white px-2 py-1 rounded text-xs">Done</button>
+                            <button onclick="window.up('${d.id}', 'Cancelled')" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs">Cancel</button>
+                            <button onclick="window.del('${d.id}')" class="bg-red-600 text-white px-2 py-1 rounded text-xs">Delete</button>
+                        </td>
+                    </tr>
+                `;
             });
+            document.getElementById("total-revenue").innerText = "৳" + rev;
+            document.getElementById("pending-count").innerText = pending;
+            document.getElementById("delivered-count").innerText = delivered;
         });
 
-        // গ্লোবাল ফাংশন
-        window.delP = async (id) => await deleteDoc(doc(db, "products", id));
-        window.updateStatus = async (id, status) => await updateDoc(doc(db, "orders", id), { status });
+        window.up = async (id, status) => await updateDoc(doc(db, "orders", id), { status });
+        window.del = async (id) => { if(confirm("Permanently delete this order?")) await deleteDoc(doc(db, "orders", id)); };
     </script>
 </body>
 </html>
